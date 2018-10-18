@@ -6,9 +6,13 @@ Compiling & Installing
 ----------------------
     $ make
     # make install
-Before compiling you might want to customize the config.mk to fit your system.
+Before compiling you might want to customize the [config.mk](config.mk) to fit your system.
 
 Running
 -------
     $ dstatus &
 Or simply add `dstatus &` to your startup script as usual.
+
+Screenshot
+----------
+![dstatus](screenshot.png)
