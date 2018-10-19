@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
@@ -22,25 +23,22 @@ char *
 cpu_perc(void)
 {
     int perc;
-    static long double ps_old[4];
-    long double ps[4];
+    static long double a[8];
+    long double b[8];
     FILE *fp;
 
     if (!(fp = fopen("/proc/stat", "r"))) {
         return ret_fmt(UNKNOWN_STR);
     }
-    fscanf(fp, "%*s %Lf %Lf %Lf %Lf",
-            &ps[0], &ps[1], &ps[2], &ps[3]);
+    /* cpu user nice system idle iowait irq softirq steal */
+    fscanf(fp, "%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
+               &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7]);
     fclose(fp);
 
-    perc = 100 * ((ps_old[0] + ps_old[1] + ps_old[2]) - (ps[0] + ps[1] + ps[2])) /
-                 ((ps_old[0] + ps_old[1] + ps_old[2] + ps_old[3]) - (ps[0] + ps[1] + ps[2] + ps[3]));
+    perc = (int)(100 * ((b[0] + b[1] + b[2] + b[5] + b[6] + b[7]) - (a[0] + a[1] + a[2] + a[5] + a[6] + a[7])) /
+                       ((b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + b[7]) - (a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + a[7])));
 
-    ps_old[0] = ps[0];
-    ps_old[1] = ps[1];
-    ps_old[2] = ps[2];
-    ps_old[3] = ps[3];
-
+    memcpy(a, b, 8 * sizeof(long double));
     return ret_fmt("%d%%", perc);
 }
 
@@ -73,7 +71,7 @@ ram_used(void)
     fscanf(fp, "Cached: %ld kB\n", &cached);
     fclose(fp);
 
-    return ret_fmt("%dMiB", (int)(total - free - buffers - cached) / 1024);
+    return ret_fmt("%dMiB", (total - free - buffers - cached) / 1024);
 }
 
 char *
@@ -114,7 +112,8 @@ temp(const char *file)
     return ret_fmt("%d°C", temp / 1000);
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     char *cp, *t, *ru, *dt, *status;
 
@@ -129,7 +128,8 @@ int main(int argc, char **argv)
         ru = ram_used();
         dt = datetime("%Y-%m-%d %H:%M");
 
-        status = ret_fmt("%s / %s / %s / %s", cp, t, ru, dt);
+        status = ret_fmt("%s / %s / %s / %s",
+                         cp, t, ru, dt);
         setstatus(status);
 
         free(cp);
