@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 
-#define UNKNOWN_STR "n/a"
+#define UNKNOWN_STR ("[n/a]")
 
 char *cpu_perc(void);
 char *datetime(const char *fmt);
@@ -77,15 +77,17 @@ ram_used(void)
 char *
 ret_fmt(char *fmt, ...)
 {
-    va_list ap;
+    va_list ap, ap1;
     int len;
     char *ret_str;
 
     va_start(ap, fmt);
+    va_copy(ap1, ap);
     len = vsnprintf(NULL, 0, fmt, ap) + 1;
-    ret_str = malloc(len);
-    vsprintf(ret_str, fmt, ap);
     va_end(ap);
+    ret_str = malloc(len);
+    vsprintf(ret_str, fmt, ap1);
+    va_end(ap1);
 
     return ret_str;
 }
@@ -109,7 +111,7 @@ temp(const char *file)
     fscanf(fp, "%d", &temp);
     fclose(fp);
 
-    return ret_fmt("%d°C", temp / 1000);
+    return ret_fmt("%d\u00B0C", temp / 1000);
 }
 
 int
@@ -144,3 +146,4 @@ main(int argc, char **argv)
     XCloseDisplay(dpy);
     return 0;
 }
+
