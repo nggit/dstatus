@@ -146,4 +146,3 @@ main(int argc, char **argv)
     XCloseDisplay(dpy);
     return 0;
 }
-

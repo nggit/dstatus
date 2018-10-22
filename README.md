@@ -4,7 +4,7 @@ A minimalist status monitor for dwm. Inspired from existing [status monitor](htt
 
 Build Dependencies
 ----------------
-libX11-dev (deb-based package name) or libX11-devel (rpm-based package name)
+libX11-dev (deb-based package name) or libX11-devel (rpm-based package name).
 
 Compiling & Installing
 ----------------------
