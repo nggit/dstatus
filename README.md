@@ -1,6 +1,11 @@
 dstatus
 =======
-A minimalist dwm status monitor. Inspired from existing [status monitor](https://dwm.suckless.org/status_monitor/).
+A minimalist status monitor for dwm. Inspired from existing [status monitor](https://dwm.suckless.org/status_monitor/).
+
+Build Dependency
+----------------
+libX11-dev (deb-based package name)
+libX11-devel (rpm-based package name)
 
 Compiling & Installing
 ----------------------
