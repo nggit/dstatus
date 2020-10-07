@@ -8,10 +8,13 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 
+#define INTERVAL    2
 #define UNKNOWN_STR ("[n/a]")
 
 char *cpu_perc(void);
 char *datetime(const char *fmt);
+char *net_speed(void);
+int pretty_bytes(char *str, double bytes, unsigned n);
 char *ram_used(void);
 char *ret_fmt(char *fmt, ...);
 void setstatus(char *str);
@@ -57,6 +60,61 @@ datetime(const char *fmt)
 }
 
 char *
+net_speed(void)
+{
+    char line[256], ib[8], rx[8], tx[8];
+    char *ls;
+    static char la[100][32];
+    static char iface[8];
+    static long double ra, ta, rc, tc;
+    long double rb, tb;
+    int i = 0;
+    FILE *fp;
+
+    if (!(fp = fopen("/proc/net/dev", "r"))) {
+        return ret_fmt(UNKNOWN_STR);
+    }
+    fgets(line, sizeof(line), fp);
+    fgets(line, sizeof(line), fp);
+    while (i < sizeof(la) / sizeof(la[0]) && fgets(line, sizeof(line), fp) != NULL) {
+        sscanf(line, "%s %Lf %*f %*f %*f %*f %*f %*f %*f %Lf", ib, &rb, &tb);
+        ls = strstr(line, ":");
+        if (strncmp(la[i], ls, sizeof(la[0])) != 0) {
+            rc = rb;
+            tc = tb;
+            memcpy(iface, ib, sizeof(iface) - 1);
+            iface[sizeof(iface) - 1] = '\0';
+        }
+        memcpy(la[i], ls, sizeof(la[0]));
+        ++i;
+    }
+    fclose(fp);
+
+    pretty_bytes(rx, (rc - ra) / INTERVAL, sizeof(rx));
+    pretty_bytes(tx, (tc - ta) / INTERVAL, sizeof(tx));
+    ra = rc;
+    ta = tc;
+
+    return ret_fmt("%s %-4s^%-4s", iface, rx, tx);
+}
+
+int
+pretty_bytes(char *str, double bytes, unsigned n)
+{
+    const char *s[] = { "B", "K", "M", "G" };
+    int i = 0;
+
+    if (bytes < 0)
+        bytes = 0;
+    while (bytes >= 1024 && i < 4) {
+        ++i;
+        bytes /= 1024;
+    }
+
+    return snprintf(str, n, "%d%s", (int)bytes, s[i]);
+}
+
+char *
 ram_used(void)
 {
     long total, free, buffers, cached;
@@ -71,7 +129,7 @@ ram_used(void)
     fscanf(fp, "Cached: %ld kB\n", &cached);
     fclose(fp);
 
-    return ret_fmt("%dMiB", (total - free - buffers - cached) / 1024);
+    return ret_fmt("%dM", (total - free - buffers - cached) / 1024);
 }
 
 char *
@@ -117,30 +175,32 @@ temp(const char *file)
 int
 main(int argc, char **argv)
 {
-    char *cp, *t, *ru, *dt, *status;
+    char *cp, *t, *ru, *ns, *dt, *status;
 
     if (!(dpy = XOpenDisplay(NULL))) {
         fprintf(stderr, "dstatus: cannot open display.\n");
         return 1;
     }
 
-    while (1) {
+    for (;;) {
         cp = cpu_perc();
-        t = temp("/sys/class/thermal/thermal_zone0/temp");
+        t  = temp("/sys/class/thermal/thermal_zone0/temp");
         ru = ram_used();
-        dt = datetime("%Y-%m-%d %H:%M");
+        ns = net_speed();
+        dt = datetime("%b %d %H:%M");
 
-        status = ret_fmt("%s / %s / %s / %s",
-                         cp, t, ru, dt);
+        status = ret_fmt("%s / %s / %s / %s / %s",
+                         cp, t, ru, ns, dt);
         setstatus(status);
 
         free(cp);
         free(t);
         free(ru);
+        free(ns);
         free(dt);
         free(status);
 
-        sleep(2);
+        sleep(INTERVAL);
     }
 
     XCloseDisplay(dpy);
