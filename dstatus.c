@@ -8,17 +8,20 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 
-#define INTERVAL    2
+#define INTERVAL    1
 #define UNKNOWN_STR ("[n/a]")
 
 char *cpu_perc(void);
 char *datetime(const char *fmt);
+char *net_addr(void);
+char *net_gateway(void);
 char *net_speed(void);
 int pretty_bytes(char *str, double bytes, unsigned n);
 char *ram_used(void);
 char *ret_fmt(char *fmt, ...);
 void setstatus(char *str);
 char *temp(const char *file);
+char *uptime(void);
 
 static Display *dpy;
 
@@ -60,6 +63,54 @@ datetime(const char *fmt)
 }
 
 char *
+net_addr(void)
+{
+    char line[256], path[20] = "/proc/net/";
+    char p[][10] = { "tcp", "udp" };
+    unsigned a, b, c, d, st, i;
+    FILE *fp;
+
+    for (i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
+        strcpy(path + 10, p[i]);
+        if (!(fp = fopen(path, "r"))) {
+            return ret_fmt(UNKNOWN_STR);
+        }
+        fgets(line, sizeof(line), fp);
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            sscanf(line, "%*[^:]: %2x%2x%2x%2x:%*[^:]:%*x %x", &a, &b, &c, &d, &st);
+            if (st < 7) {
+                fclose(fp);
+                return ret_fmt("%u.%u.%u.%u (%s)", d, c, b, a, p[i]);
+            }
+        }
+        fclose(fp);
+    }
+
+    return ret_fmt("0.0.0.0");
+}
+
+char *
+net_gateway(void)
+{
+    char line[256], iface[8];
+    unsigned a, b, c, d;
+    FILE *fp;
+
+    if (!(fp = fopen("/proc/net/route", "r"))) {
+        return ret_fmt(UNKNOWN_STR);
+    }
+    fgets(line, sizeof(line), fp);
+    if (fgets(line, sizeof(line), fp) == NULL) {
+        fclose(fp);
+        return ret_fmt("0.0.0.0");
+    } else {
+        sscanf(line, "%s %*x %2x%2x%2x%2x", iface, &a, &b, &c, &d);
+        fclose(fp);
+        return ret_fmt("%u.%u.%u.%u (%s)", d, c, b, a, iface);
+    }
+}
+
+char *
 net_speed(void)
 {
     char line[256], ib[8], rx[8], tx[8];
@@ -82,8 +133,8 @@ net_speed(void)
         if (strncmp(la[i], ls, sizeof(la[0])) != 0) {
             rc = rb;
             tc = tb;
-            memcpy(iface, ib, sizeof(iface) - 1);
-            iface[sizeof(iface) - 1] = '\0';
+            memcpy(iface, ib, strlen(ib) - 1);
+            iface[strlen(ib) - 1] = '\0';
         }
         memcpy(la[i], ls, sizeof(la[0]));
         ++i;
@@ -92,10 +143,10 @@ net_speed(void)
 
     pretty_bytes(rx, (rc - ra) / INTERVAL, sizeof(rx));
     pretty_bytes(tx, (tc - ta) / INTERVAL, sizeof(tx));
-    ra = rc;
-    ta = tc;
+    ra  = rc;
+    ta  = tc;
 
-    return ret_fmt("%s %-4s^%-4s", iface, rx, tx);
+    return ret_fmt("down: %-4s up: %-4s (%s)", rx, tx, iface);
 }
 
 int
@@ -172,10 +223,31 @@ temp(const char *file)
     return ret_fmt("%d\u00B0C", temp / 1000);
 }
 
+char *
+uptime(void) {
+    unsigned d, h, m, s;
+    FILE *fp;
+
+    if (!(fp = fopen("/proc/uptime", "r"))) {
+        return ret_fmt(UNKNOWN_STR);
+    }
+    fscanf(fp, "%u", &s);
+    fclose(fp);
+
+    d = s / 86400;
+    s %= 86400;
+    h = s / 3600;
+    s %= 3600;
+    m = s / 60;
+    s %= 60;
+
+    return ret_fmt("%ud %02u:%02u:%02u", d, h, m, s);
+}
+
 int
 main(int argc, char **argv)
 {
-    char *cp, *t, *ru, *ns, *dt, *status;
+    char *cp, *t, *ru, *u, *dt, *ns, *na, *ng, *status;
 
     if (!(dpy = XOpenDisplay(NULL))) {
         fprintf(stderr, "dstatus: cannot open display.\n");
@@ -183,21 +255,26 @@ main(int argc, char **argv)
     }
 
     for (;;) {
-        cp = cpu_perc();
-        t  = temp("/sys/class/thermal/thermal_zone0/temp");
-        ru = ram_used();
-        ns = net_speed();
-        dt = datetime("%b %d %H:%M");
-
-        status = ret_fmt("%s / %s / %s / %s / %s",
-                         cp, t, ru, ns, dt);
+        cp     = cpu_perc();
+        t      = temp("/sys/class/thermal/thermal_zone0/temp");
+        ru     = ram_used();
+        u      = uptime();
+        dt     = datetime("%b %d %H:%M");
+        ns     = net_speed();
+        na     = net_addr();
+        ng     = net_gateway();
+        status = ret_fmt("%s / %s / %s / %s / %s;%s / addr: %s / gateway: %s",
+                         cp, t, ru, u, dt, ns, na, ng);
         setstatus(status);
 
         free(cp);
         free(t);
         free(ru);
-        free(ns);
+        free(u);
         free(dt);
+        free(ns);
+        free(na);
+        free(ng);
         free(status);
 
         sleep(INTERVAL);
