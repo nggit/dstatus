@@ -71,7 +71,7 @@ net_addr(void)
     FILE *fp;
 
     for (i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
-        strcpy(path + 10, p[i]);
+        strcpy(path + strlen(path), p[i]);
         if (!(fp = fopen(path, "r"))) {
             return ret_fmt(UNKNOWN_STR);
         }
