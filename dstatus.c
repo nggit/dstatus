@@ -67,10 +67,10 @@ net_addr(void)
 {
     char line[256], path[20] = "/proc/net/";
     char p[][10] = { "tcp", "udp" };
-    unsigned a, b, c, d, st, i;
+    unsigned a, b, c, d, st;
     FILE *fp;
 
-    for (i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
+    for (unsigned i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
         strcpy(path + strlen(path), p[i]);
         if (!(fp = fopen(path, "r"))) {
             return ret_fmt(UNKNOWN_STR);
@@ -119,7 +119,7 @@ net_speed(void)
     static char iface[8];
     static long double ra, ta, rc, tc;
     long double rb, tb;
-    int i = 0;
+    unsigned i = 0;
     FILE *fp;
 
     if (!(fp = fopen("/proc/net/dev", "r"))) {
@@ -245,7 +245,7 @@ uptime(void) {
 }
 
 int
-main(int argc, char **argv)
+main(void)
 {
     char *cp, *t, *ru, *u, *dt, *ns, *na, *ng, *status;
 
