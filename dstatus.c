@@ -67,11 +67,11 @@ net_addr(void)
 {
     char line[256], path[20] = "/proc/net/";
     char p[][10] = { "tcp", "udp" };
-    unsigned a, b, c, d, st;
+    unsigned a, b, c, d, st, path_len = strlen(path);
     FILE *fp;
 
     for (unsigned i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
-        strcpy(path + strlen(path), p[i]);
+        strcpy(path + path_len, p[i]);
         if (!(fp = fopen(path, "r"))) {
             return ret_fmt(UNKNOWN_STR);
         }
