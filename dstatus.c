@@ -1,4 +1,4 @@
-// dstatus
+/* dstatus */
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -16,7 +16,7 @@ char *datetime(const char *fmt);
 char *net_addr(void);
 char *net_gateway(void);
 char *net_speed(void);
-int pretty_bytes(char *str, double bytes, unsigned n);
+int pretty_bytes(char *str, double bytes, unsigned int n);
 char *ram_used(void);
 char *ret_fmt(char *fmt, ...);
 void setstatus(char *str);
@@ -33,9 +33,9 @@ cpu_perc(void)
     long double b[8];
     FILE *fp;
 
-    if (!(fp = fopen("/proc/stat", "r"))) {
+    if (!(fp = fopen("/proc/stat", "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     /* cpu user nice system idle iowait irq softirq steal */
     fscanf(fp, "%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
                &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7]);
@@ -55,9 +55,8 @@ datetime(const char *fmt)
     time_t t;
     t = time(NULL);
 
-    if (!strftime(str, sizeof(str), fmt, localtime(&t))) {
+    if (!strftime(str, sizeof(str), fmt, localtime(&t)))
         return ret_fmt(UNKNOWN_STR);
-    }
 
     return ret_fmt("%s", str);
 }
@@ -67,14 +66,14 @@ net_addr(void)
 {
     char line[256], path[20] = "/proc/net/";
     char p[][10] = { "tcp", "udp" };
-    unsigned a, b, c, d, st, path_len = strlen(path);
+    unsigned int a, b, c, d, st, path_len = strlen(path);
     FILE *fp;
 
-    for (unsigned i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
+    for (unsigned int i = 0; i < sizeof(p) / sizeof(p[0]); ++i) {
         strcpy(path + path_len, p[i]);
-        if (!(fp = fopen(path, "r"))) {
+        if (!(fp = fopen(path, "r")))
             return ret_fmt(UNKNOWN_STR);
-        }
+
         fgets(line, sizeof(line), fp);
         while (fgets(line, sizeof(line), fp) != NULL) {
             sscanf(line, "%*[^:]: %2x%2x%2x%2x:%*[^:]:%*x %x", &a, &b, &c, &d, &st);
@@ -93,12 +92,12 @@ char *
 net_gateway(void)
 {
     char line[256], iface[8];
-    unsigned a, b, c, d;
+    unsigned int a, b, c, d;
     FILE *fp;
 
-    if (!(fp = fopen("/proc/net/route", "r"))) {
+    if (!(fp = fopen("/proc/net/route", "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     fgets(line, sizeof(line), fp);
     if (fgets(line, sizeof(line), fp) == NULL) {
         fclose(fp);
@@ -114,43 +113,43 @@ char *
 net_speed(void)
 {
     char line[256], ib[8], rx[8], tx[8];
-    char *ls;
+    char *lb;
     static char la[100][32];
     static char iface[8];
     static long double ra, ta, rc, tc;
     long double rb, tb;
-    unsigned i = 0;
+    unsigned int i = 0;
     FILE *fp;
 
-    if (!(fp = fopen("/proc/net/dev", "r"))) {
+    if (!(fp = fopen("/proc/net/dev", "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     fgets(line, sizeof(line), fp);
     fgets(line, sizeof(line), fp);
     while (i < sizeof(la) / sizeof(la[0]) && fgets(line, sizeof(line), fp) != NULL) {
         sscanf(line, "%s %Lf %*f %*f %*f %*f %*f %*f %*f %Lf", ib, &rb, &tb);
-        ls = strstr(line, ":");
-        if (strncmp(la[i], ls, sizeof(la[0])) != 0) {
+        lb = strstr(line, ":");
+        if (strncmp(la[i], lb, sizeof(la[0])) != 0) {
             rc = rb;
             tc = tb;
             memcpy(iface, ib, strlen(ib) - 1);
             iface[strlen(ib) - 1] = '\0';
         }
-        memcpy(la[i], ls, sizeof(la[0]));
+        memcpy(la[i], lb, sizeof(la[0]));
         ++i;
     }
     fclose(fp);
 
     pretty_bytes(rx, (rc - ra) / INTERVAL, sizeof(rx));
     pretty_bytes(tx, (tc - ta) / INTERVAL, sizeof(tx));
-    ra  = rc;
-    ta  = tc;
+    ra = rc;
+    ta = tc;
 
     return ret_fmt("down: %-4s up: %-4s (%s)", rx, tx, iface);
 }
 
 int
-pretty_bytes(char *str, double bytes, unsigned n)
+pretty_bytes(char *str, double bytes, unsigned int n)
 {
     const char *s[] = { "B", "K", "M", "G" };
     int i = 0;
@@ -168,12 +167,12 @@ pretty_bytes(char *str, double bytes, unsigned n)
 char *
 ram_used(void)
 {
-    long total, free, buffers, cached;
+    long int total, free, buffers, cached;
     FILE *fp;
 
-    if (!(fp = fopen("/proc/meminfo", "r"))) {
+    if (!(fp = fopen("/proc/meminfo", "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     fscanf(fp, "MemTotal: %ld kB\n", &total);
     fscanf(fp, "MemFree: %ld kB\n", &free);
     fscanf(fp, "MemAvailable: %ld kB\nBuffers: %ld kB\n", &buffers, &buffers);
@@ -214,9 +213,9 @@ temp(const char *file)
     int temp;
     FILE *fp;
 
-    if (!(fp = fopen(file, "r"))) {
+    if (!(fp = fopen(file, "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     fscanf(fp, "%d", &temp);
     fclose(fp);
 
@@ -225,12 +224,12 @@ temp(const char *file)
 
 char *
 uptime(void) {
-    unsigned d, h, m, s;
+    unsigned int d, h, m, s;
     FILE *fp;
 
-    if (!(fp = fopen("/proc/uptime", "r"))) {
+    if (!(fp = fopen("/proc/uptime", "r")))
         return ret_fmt(UNKNOWN_STR);
-    }
+
     fscanf(fp, "%u", &s);
     fclose(fp);
 
@@ -249,10 +248,8 @@ main(void)
 {
     char *cp, *t, *ru, *u, *dt, *ns, *na, *ng, *status;
 
-    if (!(dpy = XOpenDisplay(NULL))) {
-        fprintf(stderr, "dstatus: cannot open display.\n");
-        return 1;
-    }
+    if (!(dpy = XOpenDisplay(NULL)))
+        return fprintf(stderr, "dstatus: cannot open display.\n"), 1;
 
     for (;;) {
         cp     = cpu_perc();
