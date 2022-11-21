@@ -11,6 +11,7 @@
 #define INTERVAL    1
 #define UNKNOWN_STR ("[n/a]")
 
+char *bat_perc(const char *file);
 char *cpu_perc(void);
 char *datetime(const char *fmt);
 char *net_addr(void);
@@ -24,6 +25,21 @@ char *temp(const char *file);
 char *uptime(void);
 
 static Display *dpy;
+
+char *
+bat_perc(const char *file)
+{
+    int perc;
+    FILE *fp;
+
+    if (!(fp = fopen(file, "r")))
+        return ret_fmt(UNKNOWN_STR);
+
+    fscanf(fp, "%d", &perc);
+    fclose(fp);
+
+    return ret_fmt("%d", perc);
+}
 
 char *
 cpu_perc(void)
@@ -246,12 +262,13 @@ uptime(void) {
 int
 main(void)
 {
-    char *cp, *t, *ru, *u, *dt, *ns, *na, *ng, *status;
+    char *bp, *cp, *t, *ru, *u, *dt, *ns, *na, *ng, *status;
 
     if (!(dpy = XOpenDisplay(NULL)))
         return fprintf(stderr, "dstatus: cannot open display.\n"), 1;
 
     for (;;) {
+        bp     = bat_perc("/sys/class/­power_supply/BAT1/­capacity");
         cp     = cpu_perc();
         t      = temp("/sys/class/thermal/thermal_zone0/temp");
         ru     = ram_used();
@@ -260,10 +277,11 @@ main(void)
         ns     = net_speed();
         na     = net_addr();
         ng     = net_gateway();
-        status = ret_fmt("%s / %s / %s / %s / %s;%s / addr: %s / gateway: %s",
-                         cp, t, ru, u, dt, ns, na, ng);
+        status = ret_fmt("%s / %s / %s / %s / %s;%s / addr: %s / gateway: %s / BAT: %s",
+                         cp, t, ru, u, dt, ns, na, ng, bp);
         setstatus(status);
 
+        free(bp);
         free(cp);
         free(t);
         free(ru);
